@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Registro de Beneficiarios</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body>
+  <header class="nav">
+    <a href="index.html">Inicio</a>
+    <a href="registro-beneficiarios.html" class="active">Beneficiarios</a>
+    <a href="gestion-inventario.html">Inventario</a>
+    <a href="planificacion-menus.html">Menús</a>
+    <a href="coordinacion-voluntarios.html">Voluntarios</a>
+    <a href="reportes.html">Reportes</a>
+  </header>
+
+  <div class="container">
+    <div class="card form-wrap">
+      <h2>Registrar / Editar Beneficiario</h2>
+      <form id="formBen">
+        <input type="hidden" id="benId"/>
+        <label for="nombre">Nombre completo *</label>
+        <input id="nombre" type="text" required/>
+
+        <label for="documento">Documento de identidad *</label>
+        <input id="documento" type="text" required/>
+
+        <div class="row">
+          <div class="col">
+            <label for="fecha">Fecha de nacimiento *</label>
+            <input id="fecha" type="date" required/>
+          </div>
+          <div class="col">
+            <label for="telefono">Teléfono / contacto</label>
+            <input id="telefono" type="tel" placeholder="+52..." />
+          </div>
+        </div>
+
+        <label for="email">Correo electrónico</label>
+        <input id="email" type="email" placeholder="ejemplo@dominio.com" />
+
+        <div class="checkbox-row">
+          <input id="requiereDomicilio" type="checkbox"/>
+          <label for="requiereDomicilio" style="display:inline">Requiere entrega a domicilio</label>
+        </div>
+
+        <div id="direccionBox" class="hidden">
+          <label for="direccion">Dirección completa *</label>
+          <input id="direccion" type="text" />
+        </div>
+
+        <div class="row">
+          <button class="button" type="submit">Guardar</button>
+          <button class="button secondary" type="button" id="resetBtn">Nuevo</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Beneficiarios registrados</h3>
+      <div id="lista"></div>
+    </div>
+  </div>
+
+<script src="js/common.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const form = document.getElementById('formBen');
+  const lista = document.getElementById('lista');
+  const resetBtn = document.getElementById('resetBtn');
+  const requiereDomicilio = document.getElementById('requiereDomicilio');
+  const direccionBox = document.getElementById('direccionBox');
+  const direccionInput = document.getElementById('direccion');
+
+  // Helpers
+  function render(){
+    lista.innerHTML='';
+    const items = load('beneficiarios') || [];
+    items.forEach(b=>{
+      const div = document.createElement('div');
+      div.className='list-item';
+      div.innerHTML = `<div>
+        <div><strong>${b.nombre}</strong> <span class="meta">(${b.documento})</span></div>
+        <div class="meta">Nacimiento: ${b.fecha} · ${b.telefono||''} ${b.email? '· '+b.email: ''}</div>
+        <div class="meta">Domicilio: ${b.requiereDomicilio ? 'SI' : 'NO'}</div>
+      </div>
+      <div class="actions">
+        <button onclick="editar('${b.id}')">Editar</button>
+        <button onclick="borrar('${b.id}')">Borrar</button>
+      </div>`;
+      lista.appendChild(div);
+    });
+  }
+
+  window.editar = function(id){
+    const items = load('beneficiarios') || [];
+    const b = items.find(x=>x.id===id);
+    if(!b) return alert('No encontrado');
+    document.getElementById('benId').value = b.id;
+    document.getElementById('nombre').value = b.nombre;
+    document.getElementById('documento').value = b.documento;
+    document.getElementById('fecha').value = b.fecha;
+    document.getElementById('telefono').value = b.telefono || '';
+    document.getElementById('email').value = b.email || '';
+    document.getElementById('requiereDomicilio').checked = !!b.requiereDomicilio;
+    if(b.requiereDomicilio){ direccionBox.classList.remove('hidden'); direccionInput.value = b.direccion || ''; }
+    else { direccionBox.classList.add('hidden'); direccionInput.value=''; }
+  }
+
+  window.borrar = function(id){
+    if(!confirm('¿Eliminar este beneficiario?')) return;
+    let items = load('beneficiarios') || [];
+    items = items.filter(x=>x.id!==id);
+    save('beneficiarios', items);
+    render();
+  }
+
+  requiereDomicilio.addEventListener('change', function(){
+    direccionBox.classList.toggle('hidden', !this.checked);
+    direccionInput.required = this.checked;
+  });
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    // basic validation
+    const nombre = document.getElementById('nombre').value.trim();
+    const documento = document.getElementById('documento').value.trim();
+    const fecha = document.getElementById('fecha').value;
+    const telefono = document.getElementById('telefono').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const requiere = document.getElementById('requiereDomicilio').checked;
+    const direccion = document.getElementById('direccion').value.trim();
+
+    if(!nombre || !documento || !fecha){ alert('Complete los campos obligatorios.'); return; }
+    if(requiere && !direccion){ alert('Indique la dirección para entrega a domicilio.'); return; }
+
+    let items = load('beneficiarios') || [];
+    const existingId = document.getElementById('benId').value;
+    if(existingId){
+      // edit
+      const idx = items.findIndex(x=>x.id===existingId);
+      if(idx!==-1){
+        items[idx] = { id: existingId, nombre, documento, fecha, telefono, email, requiereDomicilio: requiere, direccion };
+      }
+    } else {
+      const id = uid();
+      items.push({ id, nombre, documento, fecha, telefono, email, requiereDomicilio: requiere, direccion });
+    }
+    save('beneficiarios', items);
+    form.reset();
+    direccionBox.classList.add('hidden');
+    document.getElementById('benId').value = '';
+    render();
+  });
+
+  resetBtn.addEventListener('click', function(){
+    form.reset();
+    direccionBox.classList.add('hidden');
+    document.getElementById('benId').value = '';
+  });
+
+  // init
+  ensureArrayKey('beneficiarios');
+  render();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Gestión de Inventario</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body>
+  <header class="nav">
+    <a href="index.html">Inicio</a>
+    <a href="registro-beneficiarios.html">Beneficiarios</a>
+    <a href="gestion-inventario.html" class="active">Inventario</a>
+    <a href="planificacion-menus.html">Menús</a>
+    <a href="coordinacion-voluntarios.html">Voluntarios</a>
+    <a href="reportes.html">Reportes</a>
+  </header>
+
+  <div class="container">
+    <div class="card form-wrap">
+      <h2>Agregar / Ajustar Inventario</h2>
+      <form id="formInv">
+        <label for="nombre">Nombre del alimento *</label>
+        <input id="nombre" type="text" required/>
+
+        <div class="row">
+          <div class="col">
+            <label for="cantidad">Cantidad (unidades) *</label>
+            <input id="cantidad" type="number" min="1" required/>
+          </div>
+          <div class="col">
+            <label for="tipo">Operación</label>
+            <select id="tipo">
+              <option value="entrada">Entrada</option>
+              <option value="salida">Salida</option>
+            </select>
+          </div>
+        </div>
+
+        <label for="fecha">Fecha</label>
+        <input id="fecha" type="date" />
+
+        <button class="button" type="submit">Registrar movimiento</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Stock actual</h3>
+      <div id="stockList"></div>
+    </div>
+  </div>
+
+<script src="js/common.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const form = document.getElementById('formInv');
+  const stockList = document.getElementById('stockList');
+
+  function calcStock(){
+    const movements = load('inventario') || [];
+    const stock = {};
+    movements.forEach(m=>{
+      if(!stock[m.nombre]) stock[m.nombre]=0;
+      if(m.tipo==='entrada') stock[m.nombre]+= Number(m.cantidad);
+      else stock[m.nombre]-= Number(m.cantidad);
+    });
+    return stock;
+  }
+
+  function render(){
+    stockList.innerHTML='';
+    const stock = calcStock();
+    const keys = Object.keys(stock);
+    if(keys.length===0){ stockList.innerHTML='<div class="meta">Sin registros.</div>'; return; }
+    keys.forEach(k=>{
+      const div = document.createElement('div');
+      div.className='list-item';
+      div.innerHTML = `<div><strong>${k}</strong><div class="meta">Cantidad disponible: ${stock[k]}</div></div>
+        <div class="meta">${stock[k] <= 0 ? '<span style="color:#C62828">Agotado/negativo</span>' : ''}</div>`;
+      stockList.appendChild(div);
+    });
+  }
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    const nombre = document.getElementById('nombre').value.trim();
+    const cantidad = Number(document.getElementById('cantidad').value);
+    const tipo = document.getElementById('tipo').value;
+    const fecha = document.getElementById('fecha').value || new Date().toISOString().slice(0,10);
+
+    if(!nombre || !cantidad || cantidad<=0){ alert('Complete los campos correctamente'); return; }
+
+    const movements = ensureArrayKey('inventario');
+    movements.push({ id: uid(), nombre, cantidad, tipo, fecha });
+    save('inventario', movements);
+    form.reset();
+    render();
+  });
+
+  ensureArrayKey('inventario');
+  render();
+});
+</script>
+</body>
+</html>

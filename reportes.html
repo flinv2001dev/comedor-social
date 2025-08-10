@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Reportes</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body>
+  <header class="nav">
+    <a href="index.html">Inicio</a>
+    <a href="registro-beneficiarios.html">Beneficiarios</a>
+    <a href="gestion-inventario.html">Inventario</a>
+    <a href="planificacion-menus.html">Menús</a>
+    <a href="coordinacion-voluntarios.html">Voluntarios</a>
+    <a href="reportes.html" class="active">Reportes</a>
+  </header>
+
+  <div class="container">
+    <div class="card form-wrap">
+      <h2>Generar reporte diario</h2>
+      <form id="formReport">
+        <label for="fecha">Fecha *</label>
+        <input id="fecha" type="date" required/>
+
+        <div class="row">
+          <div class="col small">
+            <label for="menusRepartidos">Menús repartidos (total)</label>
+            <input id="menusRepartidos" type="number" min="0" value="0" required/>
+          </div>
+          <div class="col small">
+            <label for="volPresentes">Voluntarios presentes (total)</label>
+            <input id="volPresentes" type="number" min="0" value="0" required/>
+          </div>
+        </div>
+
+        <div class="checkbox-row">
+          <input id="incluirDomicilios" type="checkbox"/>
+          <label for="incluirDomicilios">Incluir conteo de entregas a domicilio (beneficiarios registrados)</label>
+        </div>
+
+        <button class="button" type="submit">Guardar reporte</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Historial de reportes</h3>
+      <div id="historial"></div>
+    </div>
+
+  </div>
+
+<script src="js/common.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const form = document.getElementById('formReport');
+  const historial = document.getElementById('historial');
+
+  function render(){
+    historial.innerHTML='';
+    const reports = load('reports') || [];
+    if(reports.length===0){ historial.innerHTML='<div class="meta">No hay reportes guardados.</div>'; return; }
+    // sort desc by fecha
+    reports.sort((a,b)=> b.fecha.localeCompare(a.fecha));
+    reports.forEach(r=>{
+      const div = document.createElement('div');
+      div.className='list-item';
+      div.innerHTML = `<div>
+        <div><strong>${r.fecha}</strong></div>
+        <div class="meta">Menús repartidos: ${r.menusRepartidos} · Voluntarios presentes: ${r.volPresentes}</div>
+        <div class="meta">Domicilios registrados ese día: ${r.domiciliosCount || 0}</div>
+      </div>
+      <div class="actions">
+        <button onclick="verReporte('${r.id}')">Ver</button>
+        <button onclick="borrarReporte('${r.id}')">Borrar</button>
+      </div>`;
+      historial.appendChild(div);
+    });
+  }
+
+  window.verReporte = function(id){
+    const reports = load('reports') || [];
+    const r = reports.find(x=>x.id===id);
+    if(!r) return alert('No encontrado');
+    alert(`Reporte ${r.fecha}\nMenús: ${r.menusRepartidos}\nVoluntarios: ${r.volPresentes}\nDomicilios: ${r.domiciliosCount||0}`);
+  }
+
+  window.borrarReporte = function(id){
+    if(!confirm('Eliminar reporte?')) return;
+    let reports = load('reports') || [];
+    reports = reports.filter(x=>x.id!==id);
+    save('reports', reports);
+    render();
+  }
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    const fecha = document.getElementById('fecha').value;
+    const menusRepartidos = Number(document.getElementById('menusRepartidos').value);
+    const volPresentes = Number(document.getElementById('volPresentes').value);
+    const incluirDomicilios = document.getElementById('incluirDomicilios').checked;
+
+    if(!fecha){ alert('Seleccione una fecha'); return; }
+
+    // compute domicilios count if requested
+    let domiciliosCount = 0;
+    if(incluirDomicilios){
+      const beneficiaries = load('beneficiarios') || [];
+      domiciliosCount = beneficiaries.filter(b=>b.requiereDomicilio).length;
+    }
+
+    const reports = ensureArrayKey('reports');
+    const id = uid();
+    reports.push({ id, fecha, menusRepartidos, volPresentes, domiciliosCount });
+    save('reports', reports);
+    form.reset();
+    render();
+  });
+
+  ensureArrayKey('reports');
+  render();
+});
+</script>
+</body>
+</html>

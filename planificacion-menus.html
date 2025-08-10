@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Planificación de Menús</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body>
+  <header class="nav">
+    <a href="index.html">Inicio</a>
+    <a href="registro-beneficiarios.html">Beneficiarios</a>
+    <a href="gestion-inventario.html">Inventario</a>
+    <a href="planificacion-menus.html" class="active">Menús</a>
+    <a href="coordinacion-voluntarios.html">Voluntarios</a>
+    <a href="reportes.html">Reportes</a>
+  </header>
+
+  <div class="container">
+    <div class="card form-wrap">
+      <h2>Planificar Menú Semanal</h2>
+      <form id="formMenu">
+        <label for="dia">Día de la semana *</label>
+        <select id="dia" required>
+          <option value="">-- Seleccionar --</option>
+          <option>Lunes</option><option>Martes</option><option>Miercoles</option><option>Jueves</option><option>Viernes</option><option>Sábado</option><option>Domingo</option>
+        </select>
+
+        <label for="tipoComida">Tipo de comida *</label>
+        <select id="tipoComida" required>
+          <option value="">-- Seleccionar --</option>
+          <option>Desayuno</option><option>Almuerzo</option><option>Cena</option>
+        </select>
+
+        <label for="plato">Plato / Menú *</label>
+        <input id="plato" type="text" required/>
+
+        <div class="row">
+          <div class="col small">
+            <label for="menusRepartidos">Menús repartidos (cantidad) *</label>
+            <input id="menusRepartidos" type="number" min="0" value="100" required/>
+          </div>
+          <div class="col small">
+            <label for="volPresentes">Voluntarios presentes *</label>
+            <input id="volPresentes" type="number" min="0" value="5" required/>
+          </div>
+        </div>
+
+        <label for="fecha">Fecha específica (opcional)</label>
+        <input id="fecha" type="date" />
+
+        <button class="button" type="submit">Guardar menú</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Menús guardados</h3>
+      <div id="lista"></div>
+    </div>
+  </div>
+
+<script src="js/common.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const form = document.getElementById('formMenu');
+  const lista = document.getElementById('lista');
+
+  function render(){
+    lista.innerHTML='';
+    const items = load('menus') || [];
+    if(items.length===0){ lista.innerHTML='<div class="meta">No hay menús planificados.</div>'; return; }
+    items.forEach(m=>{
+      const div = document.createElement('div');
+      div.className='list-item';
+      div.innerHTML = `<div>
+        <div><strong>${m.dia} — ${m.tipoComida}</strong></div>
+        <div class="meta">${m.plato}</div>
+        <div class="meta">Repartidos: ${m.menusRepartidos} · Voluntarios: ${m.volPresentes} · Fecha: ${m.fecha || 'no especificada'}</div>
+      </div>
+      <div class="actions">
+        <button onclick="editarMenu('${m.id}')">Editar</button>
+        <button onclick="borrarMenu('${m.id}')">Borrar</button>
+      </div>`;
+      lista.appendChild(div);
+    });
+  }
+
+  window.editarMenu = function(id){
+    const items = load('menus') || [];
+    const m = items.find(x=>x.id===id);
+    if(!m) return alert('No encontrado');
+    document.getElementById('dia').value = m.dia;
+    document.getElementById('tipoComida').value = m.tipoComida;
+    document.getElementById('plato').value = m.plato;
+    document.getElementById('menusRepartidos').value = m.menusRepartidos;
+    document.getElementById('volPresentes').value = m.volPresentes;
+    document.getElementById('fecha').value = m.fecha || '';
+    // store editing id in form.dataset
+    form.dataset.editId = id;
+  }
+
+  window.borrarMenu = function(id){
+    if(!confirm('Eliminar menú?')) return;
+    let items = load('menus') || [];
+    items = items.filter(x=>x.id!==id);
+    save('menus', items);
+    render();
+  }
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    const dia = document.getElementById('dia').value;
+    const tipoComida = document.getElementById('tipoComida').value;
+    const plato = document.getElementById('plato').value.trim();
+    const menusRepartidos = Number(document.getElementById('menusRepartidos').value);
+    const volPresentes = Number(document.getElementById('volPresentes').value);
+    const fecha = document.getElementById('fecha').value || '';
+
+    if(!dia || !tipoComida || !plato){ alert('Complete los campos obligatorios'); return; }
+
+    let items = ensureArrayKey('menus');
+    if(form.dataset.editId){
+      const idx = items.findIndex(x=>x.id===form.dataset.editId);
+      if(idx!==-1){
+        items[idx] = { id: form.dataset.editId, dia, tipoComida, plato, menusRepartidos, volPresentes, fecha };
+      }
+      delete form.dataset.editId;
+    } else {
+      items.push({ id: uid(), dia, tipoComida, plato, menusRepartidos, volPresentes, fecha });
+    }
+    save('menus', items);
+    form.reset();
+    render();
+  });
+
+  ensureArrayKey('menus');
+  render();
+});
+</script>
+</body>
+</html>

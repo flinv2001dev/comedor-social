@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Coordinación de Voluntarios</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body>
+  <header class="nav">
+    <a href="index.html">Inicio</a>
+    <a href="registro-beneficiarios.html">Beneficiarios</a>
+    <a href="gestion-inventario.html">Inventario</a>
+    <a href="planificacion-menus.html">Menús</a>
+    <a href="coordinacion-voluntarios.html" class="active">Voluntarios</a>
+    <a href="reportes.html">Reportes</a>
+  </header>
+
+  <div class="container">
+    <div class="card form-wrap">
+      <h2>Asignar Turnos de Voluntarios</h2>
+      <form id="formVol">
+        <label for="nombre">Nombre completo *</label>
+        <input id="nombre" type="text" required/>
+        <label for="contacto">Teléfono / Email</label>
+        <input id="contacto" type="text" />
+        <div class="row">
+          <div class="col">
+            <label for="dia">Día *</label>
+            <select id="dia" required>
+              <option value="">-- Seleccionar --</option>
+              <option>Lunes</option><option>Martes</option><option>Miercoles</option><option>Jueves</option><option>Viernes</option><option>Sábado</option><option>Domingo</option>
+            </select>
+          </div>
+          <div class="col">
+            <label for="hora">Hora / Turno *</label>
+            <input id="hora" type="text" placeholder="08:00 - 11:00" required/>
+          </div>
+        </div>
+        <label for="turno">Turno</label>
+        <select id="turno">
+          <option>Manana</option><option>Tarde</option><option>Noche</option>
+        </select>
+        <label for="comentarios">Comentarios (opcional)</label>
+        <textarea id="comentarios"></textarea>
+        <button class="button" type="submit">Asignar voluntario</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Voluntarios asignados</h3>
+      <div id="lista"></div>
+    </div>
+  </div>
+
+<script src="js/common.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const form = document.getElementById('formVol');
+  const lista = document.getElementById('lista');
+
+  function render(){
+    lista.innerHTML='';
+    const items = load('voluntarios') || [];
+    if(items.length===0){ lista.innerHTML='<div class="meta">Sin voluntarios asignados.</div>'; return; }
+    items.forEach(v=>{
+      const div = document.createElement('div');
+      div.className='list-item';
+      div.innerHTML = `<div>
+        <div><strong>${v.nombre}</strong> <span class="meta">${v.contacto||''}</span></div>
+        <div class="meta">${v.dia} · ${v.hora} · ${v.turno}</div>
+        <div class="meta">${v.comentarios||''}</div>
+      </div>
+      <div class="actions">
+        <button onclick="editarVol('${v.id}')">Editar</button>
+        <button onclick="borrarVol('${v.id}')">Borrar</button>
+      </div>`;
+      lista.appendChild(div);
+    });
+  }
+
+  window.editarVol = function(id){
+    const items = load('voluntarios') || [];
+    const v = items.find(x=>x.id===id);
+    if(!v) return alert('No encontrado');
+    document.getElementById('nombre').value = v.nombre;
+    document.getElementById('contacto').value = v.contacto || '';
+    document.getElementById('dia').value = v.dia;
+    document.getElementById('hora').value = v.hora;
+    document.getElementById('turno').value = v.turno;
+    document.getElementById('comentarios').value = v.comentarios || '';
+    form.dataset.editId = id;
+  }
+
+  window.borrarVol = function(id){
+    if(!confirm('Eliminar registro?')) return;
+    let items = load('voluntarios') || [];
+    items = items.filter(x=>x.id!==id);
+    save('voluntarios', items);
+    render();
+  }
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    const nombre = document.getElementById('nombre').value.trim();
+    const contacto = document.getElementById('contacto').value.trim();
+    const dia = document.getElementById('dia').value;
+    const hora = document.getElementById('hora').value.trim();
+    const turno = document.getElementById('turno').value;
+    const comentarios = document.getElementById('comentarios').value.trim();
+    if(!nombre || !dia || !hora){ alert('Complete los campos obligatorios'); return; }
+    let items = ensureArrayKey('voluntarios');
+    if(form.dataset.editId){
+      const idx = items.findIndex(x=>x.id===form.dataset.editId);
+      if(idx!==-1){
+        items[idx] = { id: form.dataset.editId, nombre, contacto, dia, hora, turno, comentarios };
+      }
+      delete form.dataset.editId;
+    } else {
+      items.push({ id: uid(), nombre, contacto, dia, hora, turno, comentarios });
+    }
+    save('voluntarios', items);
+    form.reset();
+    render();
+  });
+
+  ensureArrayKey('voluntarios');
+  render();
+});
+</script>
+</body>
+</html>
